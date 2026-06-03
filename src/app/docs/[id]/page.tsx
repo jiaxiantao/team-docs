@@ -4,10 +4,11 @@ import { auth } from "@/auth";
 import { colorForUserId } from "@/lib/collab-token";
 import { canAccessDocument } from "@/lib/document-access";
 import { prisma } from "@/lib/prisma";
+import { AppHeader } from "@/components/layout/app-header";
 import { DocumentTitle } from "@/components/document-title";
 import { CollaborativeEditor } from "@/components/editor/collaborative-editor";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -37,29 +38,25 @@ export default async function DocumentPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-4xl items-center gap-4 px-6">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard">
+    <div className="flex min-h-screen flex-col bg-background">
+      <AppHeader sticky className="border-b">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Button variant="ghost" size="icon" className="shrink-0" asChild>
+            <Link href="/dashboard" aria-label="返回文档列表">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <FileText className="h-5 w-5 text-primary shrink-0" />
           <DocumentTitle
-            key={document.id + document.title}
+            key={`${document.id}-${document.title}`}
             documentId={document.id}
             initialTitle={document.title}
-            className="flex-1"
+            className="min-w-0 flex-1"
           />
         </div>
-      </header>
+      </AppHeader>
 
-      <main className="mx-auto max-w-4xl px-6 py-8">
-        <CollaborativeEditor
-          documentId={document.id}
-          user={user}
-        />
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <CollaborativeEditor documentId={document.id} user={user} />
       </main>
     </div>
   );

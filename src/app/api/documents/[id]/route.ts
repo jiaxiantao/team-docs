@@ -53,7 +53,12 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "无权编辑" }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: { title?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "无效的 JSON" }, { status: 400 });
+  }
   const title = typeof body.title === "string" ? body.title.trim() : undefined;
 
   if (!title) {

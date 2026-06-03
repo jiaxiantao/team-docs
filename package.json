@@ -9,7 +9,8 @@
     "dev:collab": "node collab-server/index.mjs",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "db:check": "tsx scripts/check-db.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -19,7 +20,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@hocuspocus/provider": "^4.1.0",
+    "@hocuspocus/provider": "^3.4.4",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",

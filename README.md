@@ -1,6 +1,8 @@
 # Team Docs
 
-类飞书文档的**在线实时协同编辑**项目，基于现代 Web 技术栈构建，支持 Docker 部署与 GitHub Actions CI/CD。
+[![CI](https://github.com/jiaxiantao/team-docs/actions/workflows/ci.yml/badge.svg)](https://github.com/jiaxiantao/team-docs/actions/workflows/ci.yml)
+
+类飞书文档的**在线实时协同编辑**开源项目，基于现代 Web 技术栈构建，支持 Docker 部署与 GitHub Actions CI/CD。
 
 ## 技术架构
 
@@ -118,7 +120,7 @@ docker compose up -d --build
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`)：Push/PR 时运行 Lint、数据库迁移、Next.js 构建、Docker 镜像构建验证。
+- **CI** (`.github/workflows/ci.yml`)：Push/PR 时运行 Lint、Typecheck、数据库迁移、Next.js 构建、Docker 镜像构建验证。
 - **CD** (`.github/workflows/cd.yml`)：推送到 `main` 或打 `v*` 标签时，构建并推送镜像到 `ghcr.io/<owner>/<repo>/web` 与 `collab`。
 
 ## 核心功能
@@ -167,6 +169,10 @@ team-docs/
 - S3 附件与图片上传
 - OAuth（GitHub / 企业 SSO）
 
+## 参与贡献
+
+欢迎提交 Issue 与 Pull Request，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题请见 [SECURITY.md](SECURITY.md)。
+
 ## License
 
-MIT
+[MIT](LICENSE)

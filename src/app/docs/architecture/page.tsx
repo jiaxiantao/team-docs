@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { AppHeader } from "@/components/layout/app-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata = {
   title: "技术架构 — Team Docs",
@@ -8,63 +10,57 @@ export const metadata = {
 };
 
 const stack = [
-  ["前端", "Next.js 16 + React 19", "App Router、API Routes、认证中间件"],
+  ["前端", "Next.js 16 + React 19", "App Router、API Routes、Edge-safe 中间件"],
   ["编辑器", "Tiptap 3 + ProseMirror", "富文本编辑与工具栏"],
-  ["协同", "Yjs + Hocuspocus", "冲突自由合并，实时同步"],
-  ["数据库", "PostgreSQL + Prisma", "用户、文档元数据、Yjs 状态"],
+  ["协同", "Yjs + Hocuspocus 3", "冲突自由合并，WebSocket 实时同步"],
+  ["数据库", "PostgreSQL + Prisma", "用户、文档元数据、Yjs 二进制状态"],
   ["认证", "Auth.js (NextAuth v5)", "JWT 会话 + 协同 HMAC 令牌"],
   ["部署", "Docker Compose", "Web + Collab + Postgres"],
-  ["CI/CD", "GitHub Actions", "Lint、迁移、构建、镜像发布"],
+  ["CI/CD", "GitHub Actions", "Lint、Typecheck、构建、Docker 镜像"],
 ] as const;
 
 export default function ArchitecturePage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/50 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-3xl items-center gap-4 px-6">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <FileText className="h-5 w-5 text-primary" />
-            Team Docs
-          </Link>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-background">
+      <AppHeader>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/">返回首页</Link>
+        </Button>
+      </AppHeader>
 
-      <main className="mx-auto max-w-3xl px-6 py-12 space-y-10">
+      <main className="mx-auto w-full max-w-3xl flex-1 space-y-10 px-4 py-10 sm:px-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">技术架构</h1>
-          <p className="mt-3 text-muted-foreground leading-relaxed">
+          <p className="mt-3 leading-relaxed text-muted-foreground">
             Team Docs 是基于 CRDT 的在线协同文档系统，采用前后端分离 +
-            WebSocket 协同服务 + PostgreSQL 持久化的架构。
+            WebSocket 协同服务 + PostgreSQL 持久化。
           </p>
         </div>
 
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">技术栈</h2>
-          <div className="overflow-x-auto rounded-xl border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium">层级</th>
-                  <th className="px-4 py-3 text-left font-medium">技术</th>
-                  <th className="px-4 py-3 text-left font-medium">说明</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stack.map(([layer, tech, desc]) => (
-                  <tr key={layer} className="border-t">
-                    <td className="px-4 py-3 font-medium">{layer}</td>
-                    <td className="px-4 py-3">{tech}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{desc}</td>
+          <Card>
+            <CardContent className="overflow-x-auto p-0">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">层级</th>
+                    <th className="px-4 py-3 text-left font-medium">技术</th>
+                    <th className="px-4 py-3 text-left font-medium">说明</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {stack.map(([layer, tech, desc]) => (
+                    <tr key={layer} className="border-t">
+                      <td className="px-4 py-3 font-medium">{layer}</td>
+                      <td className="px-4 py-3">{tech}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
         </section>
 
         <section className="space-y-4">
@@ -83,19 +79,30 @@ export default function ArchitecturePage() {
           </pre>
         </section>
 
-        <section className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           完整开发与部署说明见{" "}
           <a
             href="https://github.com/jiaxiantao/team-docs"
+            className="font-medium text-primary hover:underline"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
           >
             GitHub 仓库 README
           </a>
+          与{" "}
+          <a
+            href="https://github.com/jiaxiantao/team-docs/blob/main/CONTRIBUTING.md"
+            className="font-medium text-primary hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            CONTRIBUTING.md
+          </a>
           。
-        </section>
+        </p>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

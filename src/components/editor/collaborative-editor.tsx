@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -72,16 +74,26 @@ function EditorSurface({
     [ydoc, provider, user.name, user.color],
   );
 
-  const setLink = useCallback(() => {
+  const [linkUrl, setLinkUrl] = useState("");
+  const [showLinkInput, setShowLinkInput] = useState(false);
+
+  const applyLink = useCallback(() => {
     if (!editor) return;
-    const previousUrl = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("链接地址", previousUrl ?? "https://");
-    if (url === null) return;
-    if (url === "") {
+    if (!linkUrl.trim()) {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
+    } else {
+      const href = linkUrl.startsWith("http") ? linkUrl : `https://${linkUrl}`;
+      editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
     }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    setShowLinkInput(false);
+    setLinkUrl("");
+  }, [editor, linkUrl]);
+
+  const openLinkInput = useCallback(() => {
+    if (!editor) return;
+    const previous = editor.getAttributes("link").href as string | undefined;
+    setLinkUrl(previous ?? "");
+    setShowLinkInput(true);
   }, [editor]);
 
   if (!editor) {
@@ -140,8 +152,30 @@ function EditorSurface({
             active={editor.isActive("orderedList")}
             label="1. 列表"
           />
-          <ToolbarButton onClick={setLink} label="链接" />
+          <ToolbarButton onClick={openLinkInput} label="链接" />
         </div>
+        {showLinkInput && (
+          <div className="flex flex-wrap items-center gap-2 border-t px-4 py-2">
+            <Input
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://example.com"
+              className="h-8 max-w-xs flex-1 text-sm"
+              onKeyDown={(e) => e.key === "Enter" && applyLink()}
+            />
+            <Button type="button" size="sm" variant="secondary" onClick={applyLink}>
+              应用
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowLinkInput(false)}
+            >
+              取消
+            </Button>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4" />
@@ -187,7 +221,16 @@ export function CollaborativeEditor({
     return new Y.Doc();
   }, [documentId]);
 
+  const connectStarted = useRef(false);
+
   useEffect(() => {
+    connectStarted.current = false;
+  }, [documentId]);
+
+  useEffect(() => {
+    if (connectStarted.current) return;
+    connectStarted.current = true;
+
     let active = true;
     let hocuspocus: HocuspocusProvider | null = null;
 
@@ -243,6 +286,7 @@ export function CollaborativeEditor({
 
     return () => {
       active = false;
+      connectStarted.current = false;
       hocuspocus?.destroy();
       setProvider(null);
       setSynced(false);

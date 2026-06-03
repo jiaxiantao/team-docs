@@ -16,17 +16,26 @@ export function DocumentTitle({
 }: DocumentTitleProps) {
   const [title, setTitle] = useState(initialTitle);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const saveTitle = useCallback(
     async (value: string) => {
       const trimmed = value.trim() || "无标题文档";
       setSaving(true);
+      setError(null);
       try {
-        await fetch(`/api/documents/${documentId}`, {
+        const res = await fetch(`/api/documents/${documentId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: trimmed }),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "保存失败");
+        }
+        setTitle(trimmed);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "保存失败");
       } finally {
         setSaving(false);
       }
@@ -35,21 +44,27 @@ export function DocumentTitle({
   );
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("min-w-0", className)}>
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onBlur={() => saveTitle(title)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.currentTarget.blur();
-          }
+          if (e.key === "Enter") e.currentTarget.blur();
         }}
-        className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground"
+        className="w-full bg-transparent text-lg font-semibold tracking-tight outline-none placeholder:text-muted-foreground sm:text-xl"
         placeholder="无标题文档"
+        aria-label="文档标题"
       />
-      {saving && (
-        <span className="text-xs text-muted-foreground shrink-0">保存中…</span>
+      {(saving || error) && (
+        <p
+          className={cn(
+            "mt-0.5 text-xs",
+            error ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {error ?? "保存中…"}
+        </p>
       )}
     </div>
   );

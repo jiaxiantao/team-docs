@@ -1,0 +1,38 @@
+name: Bug 报告
+description: 报告可复现的问题
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 清晰描述遇到的问题
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开 ...
+        2. 点击 ...
+        3. 看到错误
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 提交版本 / 分支
+      placeholder: main @ abc1234
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      placeholder: macOS, Node 22, Chrome 120, pnpm dev
