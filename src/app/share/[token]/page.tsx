@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { findActiveShareByToken } from "@/lib/document-share";
 import { CollaborativeEditor } from "@/components/editor/collaborative-editor";
 import { AppHeader } from "@/components/layout/app-header";
-import { Button } from "@/components/ui/button";
+import { SharePageActions } from "@/components/share-page-actions";
 import { Eye } from "lucide-react";
 
 type PageProps = {
@@ -33,9 +32,7 @@ export default async function PublicSharePage({ params }: PageProps) {
           <h1 className="truncate text-lg font-semibold sm:text-xl">
             {link.document.title}
           </h1>
-          <Button variant="outline" size="sm" asChild className="shrink-0">
-            <Link href="/register">注册协作</Link>
-          </Button>
+          <SharePageActions shareToken={token} />
         </div>
       </AppHeader>
 
