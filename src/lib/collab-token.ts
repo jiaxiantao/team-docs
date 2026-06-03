@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import type { CollabAccessMode } from "@/lib/role";
 
-const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+const TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 function getSecret(): string {
   const secret = process.env.COLLAB_SECRET;
@@ -15,10 +16,13 @@ export type CollabTokenPayload = {
   documentId: string;
   name: string;
   color: string;
+  access: CollabAccessMode;
   exp: number;
 };
 
-export function signCollabToken(payload: Omit<CollabTokenPayload, "exp">): string {
+export function signCollabToken(
+  payload: Omit<CollabTokenPayload, "exp">,
+): string {
   const exp = Date.now() + TOKEN_TTL_MS;
   const body = JSON.stringify({ ...payload, exp });
   const signature = createHmac("sha256", getSecret())

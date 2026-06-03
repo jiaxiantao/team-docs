@@ -1,11 +1,11 @@
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { roleMeetsMinimum } from "@/lib/role";
 
-export async function canAccessDocument(
+export async function getDocumentRole(
   userId: string,
   documentId: string,
-  minRole: Role = Role.VIEWER,
-): Promise<boolean> {
+): Promise<Role | null> {
   const doc = await prisma.document.findUnique({
     where: { id: documentId },
     include: {
@@ -13,19 +13,21 @@ export async function canAccessDocument(
     },
   });
 
-  if (!doc) return false;
-  if (doc.ownerId === userId) return true;
+  if (!doc) return null;
+  if (doc.ownerId === userId) return Role.OWNER;
 
   const collab = doc.collaborators[0];
-  if (!collab) return false;
+  return collab?.role ?? null;
+}
 
-  const rank: Record<Role, number> = {
-    VIEWER: 1,
-    EDITOR: 2,
-    OWNER: 3,
-  };
-
-  return rank[collab.role] >= rank[minRole];
+export async function canAccessDocument(
+  userId: string,
+  documentId: string,
+  minRole: Role = Role.VIEWER,
+): Promise<boolean> {
+  const role = await getDocumentRole(userId, documentId);
+  if (!role) return false;
+  return roleMeetsMinimum(role, minRole);
 }
 
 export async function canEditDocument(
@@ -33,4 +35,15 @@ export async function canEditDocument(
   documentId: string,
 ): Promise<boolean> {
   return canAccessDocument(userId, documentId, Role.EDITOR);
+}
+
+export async function isDocumentOwner(
+  userId: string,
+  documentId: string,
+): Promise<boolean> {
+  const doc = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: { ownerId: true },
+  });
+  return doc?.ownerId === userId;
 }

@@ -86,7 +86,12 @@ docker run -d --name teamdocs-pg \
 # 此时需把 .env 的 DATABASE_URL 改为 teamdocs 用户/库
 ```
 
-演示账号：`demo@teamdocs.local` / `demo123456`
+演示账号：
+
+| 角色 | 邮箱 | 密码 |
+|------|------|------|
+| 所有者 | `demo@teamdocs.local` | `demo123456` |
+| 仅查看协作者 | `viewer@teamdocs.local` | `viewer123456` |
 
 ### 4. 启动服务
 
@@ -124,7 +129,7 @@ docker compose up -d --build
 
 | Job | 触发条件 | 说明 |
 |-----|----------|------|
-| `quality` | Push / PR | Lint、Typecheck、迁移、Next.js 构建 |
+| `quality` | Push / PR | Lint、Typecheck、单元测试、迁移、Next.js 构建 |
 | `docker-verify` | Push | 本地构建 Docker 镜像做校验（不推送） |
 | `release` | Push 到 `main` 或 `v*` 标签 | 构建并推送镜像到 `ghcr.io/<owner>/<repo>/web` 与 `collab` |
 
@@ -136,7 +141,10 @@ docker compose up -d --build
 - ✅ 协作者光标与昵称展示
 - ✅ 在线人数显示
 - ✅ Yjs 文档状态持久化到 PostgreSQL
-- ✅ 协同连接 HMAC 令牌鉴权
+- ✅ 协同连接 HMAC 令牌鉴权（含角色：可编辑 / 仅查看）
+- ✅ 协作者邀请与角色管理
+- ✅ 环境变量校验、`/api/health`、安全响应头
+- ✅ Vitest 单元测试（`pnpm test`）
 
 ## 项目结构
 
@@ -168,7 +176,7 @@ team-docs/
 
 ## 扩展建议
 
-- 文档分享链接与协作者邀请（`DocumentCollaborator` 表已预留）
+- 公开分享链接（无需登录的只读链接）
 - 版本历史 / 快照回滚
 - Redis 扩展 Hocuspocus 多实例
 - S3 附件与图片上传

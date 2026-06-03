@@ -1,12 +1,19 @@
 import { Server } from "@hocuspocus/server";
 import { Database } from "@hocuspocus/extension-database";
 import { createHmac, timingSafeEqual } from "crypto";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Role } from "@prisma/client";
 import "dotenv/config";
 
 const prisma = new PrismaClient();
 const port = Number(process.env.COLLAB_PORT ?? 1234);
 const secret = process.env.COLLAB_SECRET;
+const MAX_STATE_BYTES = 5 * 1024 * 1024;
+
+const ROLE_RANK = {
+  VIEWER: 1,
+  EDITOR: 2,
+  OWNER: 3,
+};
 
 if (!secret) {
   console.error("COLLAB_SECRET is required");
@@ -31,10 +38,30 @@ function verifyCollabToken(token) {
 
     const payload = JSON.parse(body);
     if (payload.exp < Date.now()) return null;
+    if (payload.access !== "editor" && payload.access !== "viewer") {
+      return null;
+    }
     return payload;
   } catch {
     return null;
   }
+}
+
+async function userHasDocumentAccess(userId, documentId, minRole) {
+  const doc = await prisma.document.findUnique({
+    where: { id: documentId },
+    include: {
+      collaborators: { where: { userId } },
+    },
+  });
+
+  if (!doc) return false;
+  if (doc.ownerId === userId) return true;
+
+  const collab = doc.collaborators[0];
+  if (!collab) return false;
+
+  return ROLE_RANK[collab.role] >= ROLE_RANK[minRole];
 }
 
 const server = new Server({
@@ -67,12 +94,23 @@ const server = new Server({
       throw new Error("Document mismatch");
     }
 
+    const minRole = payload.access === "editor" ? Role.EDITOR : Role.VIEWER;
+    const allowed = await userHasDocumentAccess(
+      payload.userId,
+      documentName,
+      minRole,
+    );
+    if (!allowed) {
+      throw new Error("Access revoked");
+    }
+
     return {
       user: {
         id: payload.userId,
         name: payload.name,
         color: payload.color,
       },
+      readOnly: payload.access === "viewer",
     };
   },
 
@@ -86,6 +124,13 @@ const server = new Server({
         return new Uint8Array(row.state);
       },
       store: async ({ documentName, state }) => {
+        if (state.byteLength > MAX_STATE_BYTES) {
+          console.warn(
+            `[collab] Document ${documentName} state exceeds ${MAX_STATE_BYTES} bytes, skipping persist`,
+          );
+          return;
+        }
+
         await prisma.documentState.upsert({
           where: { documentId: documentName },
           create: {

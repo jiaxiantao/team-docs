@@ -16,6 +16,7 @@ type DocumentItem = {
   title: string;
   updatedAt: string;
   createdAt: string;
+  ownerId: string;
   owner: { name: string | null; email: string };
 };
 
@@ -207,15 +208,17 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteDocument(doc.id)}
-                        aria-label="删除文档"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {doc.ownerId === session?.user?.id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteDocument(doc.id)}
+                          aria-label="删除文档"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 </li>

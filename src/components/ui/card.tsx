@@ -29,6 +29,20 @@ export function CardHeader({
   return <div className={cn("flex flex-col gap-1 p-6 pb-0", className)}>{children}</div>;
 }
 
+export function CardTitle({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <h3 className={cn("font-semibold leading-none tracking-tight", className)}>
+      {children}
+    </h3>
+  );
+}
+
 export function CardContent({
   className,
   children,

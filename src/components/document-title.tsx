@@ -6,12 +6,14 @@ import { cn } from "@/lib/utils";
 type DocumentTitleProps = {
   documentId: string;
   initialTitle: string;
+  readOnly?: boolean;
   className?: string;
 };
 
 export function DocumentTitle({
   documentId,
   initialTitle,
+  readOnly = false,
   className,
 }: DocumentTitleProps) {
   const [title, setTitle] = useState(initialTitle);
@@ -20,6 +22,7 @@ export function DocumentTitle({
 
   const saveTitle = useCallback(
     async (value: string) => {
+      if (readOnly) return;
       const trimmed = value.trim() || "无标题文档";
       setSaving(true);
       setError(null);
@@ -40,8 +43,18 @@ export function DocumentTitle({
         setSaving(false);
       }
     },
-    [documentId],
+    [documentId, readOnly],
   );
+
+  if (readOnly) {
+    return (
+      <div className={cn("min-w-0", className)}>
+        <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">
+          {title}
+        </h1>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("min-w-0", className)}>

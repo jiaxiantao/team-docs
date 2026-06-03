@@ -20,8 +20,9 @@ async function main() {
     where: { ownerId: demo.id },
   });
 
-  if (!existing) {
-    await prisma.document.create({
+  let welcomeDoc = existing;
+  if (!welcomeDoc) {
+    welcomeDoc = await prisma.document.create({
       data: {
         title: "欢迎使用 Team Docs",
         ownerId: demo.id,
@@ -32,9 +33,35 @@ async function main() {
     });
   }
 
+  const viewerHash = await hashPassword("viewer123456");
+  const viewer = await prisma.user.upsert({
+    where: { email: "viewer@teamdocs.local" },
+    update: {},
+    create: {
+      email: "viewer@teamdocs.local",
+      name: "只读协作者",
+      passwordHash: viewerHash,
+    },
+  });
+
+  await prisma.documentCollaborator.upsert({
+    where: {
+      documentId_userId: {
+        documentId: welcomeDoc.id,
+        userId: viewer.id,
+      },
+    },
+    create: {
+      documentId: welcomeDoc.id,
+      userId: viewer.id,
+      role: "VIEWER",
+    },
+    update: { role: "VIEWER" },
+  });
+
   console.log("Seed complete:");
-  console.log("  Email:    demo@teamdocs.local");
-  console.log("  Password: demo123456");
+  console.log("  Owner:  demo@teamdocs.local / demo123456");
+  console.log("  Viewer: viewer@teamdocs.local / viewer123456");
 }
 
 main()

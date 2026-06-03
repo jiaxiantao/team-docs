@@ -106,13 +106,13 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">密码（至少 6 位）</Label>
+              <Label htmlFor="password">密码（至少 8 位）</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
+                minLength={8}
                 autoComplete="new-password"
                 required
               />

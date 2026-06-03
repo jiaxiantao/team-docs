@@ -22,6 +22,7 @@ type CollaborativeEditorProps = {
     name: string;
     color: string;
   };
+  readOnly?: boolean;
   className?: string;
 };
 
@@ -29,6 +30,7 @@ type EditorSurfaceProps = {
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
   user: CollaborativeEditorProps["user"];
+  readOnly?: boolean;
   className?: string;
 };
 
@@ -37,11 +39,13 @@ function EditorSurface({
   ydoc,
   provider,
   user,
+  readOnly = false,
   className,
 }: EditorSurfaceProps) {
   const editor = useEditor(
     {
       immediatelyRender: false,
+      editable: !readOnly,
       extensions: [
         StarterKit.configure({
           undoRedo: false,
@@ -71,7 +75,7 @@ function EditorSurface({
         },
       },
     },
-    [ydoc, provider, user.name, user.color],
+    [ydoc, provider, user.name, user.color, readOnly],
   );
 
   const [linkUrl, setLinkUrl] = useState("");
@@ -108,22 +112,26 @@ function EditorSurface({
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2">
+        {!readOnly && (
         <div className="flex flex-wrap items-center gap-1">
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive("bold")}
+            ariaLabel="加粗"
             label="B"
             className="font-bold"
           />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive("italic")}
+            ariaLabel="斜体"
             label="I"
             className="italic"
           />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             active={editor.isActive("underline")}
+            ariaLabel="下划线"
             label="U"
             className="underline"
           />
@@ -133,6 +141,7 @@ function EditorSurface({
               editor.chain().focus().toggleHeading({ level: 1 }).run()
             }
             active={editor.isActive("heading", { level: 1 })}
+            ariaLabel="一级标题"
             label="H1"
           />
           <ToolbarButton
@@ -140,21 +149,25 @@ function EditorSurface({
               editor.chain().focus().toggleHeading({ level: 2 }).run()
             }
             active={editor.isActive("heading", { level: 2 })}
+            ariaLabel="二级标题"
             label="H2"
           />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive("bulletList")}
+            ariaLabel="无序列表"
             label="• 列表"
           />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive("orderedList")}
+            ariaLabel="有序列表"
             label="1. 列表"
           />
-          <ToolbarButton onClick={openLinkInput} label="链接" />
+          <ToolbarButton onClick={openLinkInput} ariaLabel="插入链接" label="链接" />
         </div>
-        {showLinkInput && (
+        )}
+        {showLinkInput && !readOnly && (
           <div className="flex flex-wrap items-center gap-2 border-t px-4 py-2">
             <Input
               value={linkUrl}
@@ -177,7 +190,12 @@ function EditorSurface({
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div
+          className={cn(
+            "flex items-center gap-2 text-sm text-muted-foreground",
+            readOnly && "ml-auto",
+          )}
+        >
           <Users className="h-4 w-4" />
           <OnlineCount provider={provider} />
           <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
@@ -207,6 +225,7 @@ function OnlineCount({ provider }: { provider: HocuspocusProvider }) {
 export function CollaborativeEditor({
   documentId,
   user,
+  readOnly = false,
   className,
 }: CollaborativeEditorProps) {
   const [provider, setProvider] = useState<HocuspocusProvider | null>(null);
@@ -337,6 +356,7 @@ export function CollaborativeEditor({
       ydoc={ydoc}
       provider={provider}
       user={user}
+      readOnly={readOnly}
       className={className}
     />
   );
@@ -346,17 +366,21 @@ function ToolbarButton({
   onClick,
   active,
   label,
+  ariaLabel,
   className,
 }: {
   onClick: () => void;
   active?: boolean;
   label: string;
+  ariaLabel: string;
   className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={ariaLabel}
+      aria-pressed={active}
       className={cn(
         "rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent",
         active && "bg-accent text-accent-foreground",

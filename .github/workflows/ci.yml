@@ -61,8 +61,13 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      - name: Test
+        run: pnpm run test
+
       - name: Build Next.js
         run: pnpm run build
+        env:
+          SKIP_ENV_VALIDATION: "1"
 
   docker-verify:
     runs-on: ubuntu-latest

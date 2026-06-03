@@ -23,6 +23,7 @@ export async function GET() {
       title: true,
       updatedAt: true,
       createdAt: true,
+      ownerId: true,
       owner: { select: { name: true, email: true } },
     },
   });

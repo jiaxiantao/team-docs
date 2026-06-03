@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { hashPassword } from "@/lib/password";
+import { passwordSchema } from "@/lib/password-policy";
 import { prisma } from "@/lib/prisma";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.email(),
-  password: z.string().min(6),
+  password: passwordSchema,
   name: z
     .string()
     .max(50)
@@ -14,6 +16,11 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  if (!rateLimit(`register:${ip}`, 5, 60_000)) {
+    return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
     const parsed = schema.safeParse(body);

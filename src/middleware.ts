@@ -6,7 +6,10 @@ const { auth } = NextAuth(authConfig);
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/" || pathname === "/docs/architecture") return true;
-  if (pathname === "/login" || pathname === "/register") return true;
+  if (pathname === "/login" || pathname === "/register" || pathname === "/forbidden") {
+    return true;
+  }
+  if (pathname === "/api/health") return true;
   if (pathname.startsWith("/api/auth") || pathname === "/api/register") {
     return true;
   }

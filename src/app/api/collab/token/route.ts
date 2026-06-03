@@ -4,12 +4,19 @@ import {
   colorForUserId,
   signCollabToken,
 } from "@/lib/collab-token";
-import { canAccessDocument } from "@/lib/document-access";
+import { getDocumentRole } from "@/lib/document-access";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { collabAccessModeForRole } from "@/lib/role";
 
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "未授权" }, { status: 401 });
+  }
+
+  const ip = clientIp(request);
+  if (!rateLimit(`collab-token:${session.user.id}:${ip}`, 30, 60_000)) {
+    return NextResponse.json({ error: "请求过于频繁" }, { status: 429 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -19,8 +26,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "缺少 documentId" }, { status: 400 });
   }
 
-  const allowed = await canAccessDocument(session.user.id, documentId, "VIEWER");
-  if (!allowed) {
+  const role = await getDocumentRole(session.user.id, documentId);
+  if (!role) {
     return NextResponse.json({ error: "无权访问" }, { status: 403 });
   }
 
@@ -29,10 +36,12 @@ export async function GET(request: Request) {
     documentId,
     name: session.user.name ?? session.user.email ?? "匿名用户",
     color: colorForUserId(session.user.id),
+    access: collabAccessModeForRole(role),
   });
 
   return NextResponse.json({
     token,
+    access: collabAccessModeForRole(role),
     wsUrl: process.env.NEXT_PUBLIC_COLLAB_WS_URL ?? "ws://localhost:1234",
   });
 }
