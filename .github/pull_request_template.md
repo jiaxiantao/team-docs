@@ -11,8 +11,7 @@
 
 ## 测试
 
-- [ ] `pnpm run lint`
-- [ ] `pnpm run typecheck`
+- [ ] `pnpm run validate`（或 lint + typecheck + test）
 - [ ] `pnpm run build`
 - [ ] 本地手动验证（请简述）
 

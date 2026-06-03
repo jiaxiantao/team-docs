@@ -4,6 +4,19 @@
 
 ### Added
 
+- 路由级 `loading.tsx` / `docs/[id]/error.tsx` / `global-error.tsx`
+- 协同令牌单元测试、编辑器断线重连与重试
+- Dependabot（npm、GitHub Actions）
+- Docker `web` 服务健康检查
+- 登录接口频率限制（middleware）
+
+### Changed
+
+- PR 与 push 均运行 Docker 镜像构建校验
+- 编辑器工具栏与链接输入布局优化
+
+### Added (v0.2.0 batch)
+
 - 协作者邀请 API 与管理面板（可编辑 / 仅查看）
 - 只读模式：VIEWER 无法编辑标题与正文，协同服务 `readOnly` 鉴权
 - 环境变量启动校验（`instrumentation.ts` + `src/lib/env.ts`）

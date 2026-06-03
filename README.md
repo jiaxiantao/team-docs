@@ -133,6 +133,8 @@ docker compose up -d --build
 | `docker-verify` | Push | 本地构建 Docker 镜像做校验（不推送） |
 | `release` | Push 到 `main` 或 `v*` 标签 | 构建并推送镜像到 `ghcr.io/<owner>/<repo>/web` 与 `collab` |
 
+PR 与 push 均会执行 `docker-verify`。依赖更新由 [Dependabot](.github/dependabot.yml) 每周扫描。
+
 ## 核心功能
 
 - ✅ 用户注册 / 登录

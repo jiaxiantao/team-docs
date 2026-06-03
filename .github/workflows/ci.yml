@@ -72,7 +72,6 @@ jobs:
   docker-verify:
     runs-on: ubuntu-latest
     needs: quality
-    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4

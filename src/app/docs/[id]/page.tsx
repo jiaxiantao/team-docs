@@ -20,12 +20,11 @@ type PageProps = {
 };
 
 export default async function DocumentPage({ params }: PageProps) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/login");
+    redirect(`/login?callbackUrl=${encodeURIComponent(`/docs/${id}`)}`);
   }
-
-  const { id } = await params;
 
   const document = await prisma.document.findUnique({
     where: { id },

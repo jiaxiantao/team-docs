@@ -21,7 +21,7 @@ pnpm dev
 
 - 使用清晰的中文或英文 commit message
 - 一个 PR 聚焦一类改动
-- 确保通过：`pnpm run lint`、`pnpm run typecheck`、`pnpm run build`
+- 确保通过：`pnpm run validate`（lint + typecheck + test）或 `pnpm run build`
 
 ## Pull Request 流程
 

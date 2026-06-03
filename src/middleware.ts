@@ -1,8 +1,15 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
+import { rateLimit } from "@/lib/rate-limit";
 
 const { auth } = NextAuth(authConfig);
+
+function requestIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() ?? "unknown";
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/" || pathname === "/docs/architecture") return true;
@@ -20,6 +27,14 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
   const isApi = pathname.startsWith("/api/");
+
+  if (
+    req.method === "POST" &&
+    pathname.startsWith("/api/auth") &&
+    !rateLimit(`auth:${requestIp(req)}`, 20, 60_000)
+  ) {
+    return NextResponse.json({ error: "请求过于频繁" }, { status: 429 });
+  }
 
   if (!isLoggedIn && !isPublicPath(pathname)) {
     if (isApi) {
