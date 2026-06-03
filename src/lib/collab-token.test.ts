@@ -44,6 +44,18 @@ describe("collab token", () => {
     expect(verifyCollabToken(bad)).toBeNull();
   });
 
+  it("round-trips share token field", () => {
+    const token = signCollabToken({
+      userId: "guest-1",
+      documentId: "doc-1",
+      name: "访客",
+      color: "#a3e635",
+      access: "viewer",
+      shareToken: "public-share-token",
+    });
+    expect(verifyCollabToken(token)?.shareToken).toBe("public-share-token");
+  });
+
   it("includes viewer access mode in payload", () => {
     const token = signCollabToken({
       userId: "user-1",

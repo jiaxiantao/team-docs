@@ -41,10 +41,30 @@ function verifyCollabToken(token) {
     if (payload.access !== "editor" && payload.access !== "viewer") {
       return null;
     }
+    if (
+      payload.shareToken != null &&
+      typeof payload.shareToken !== "string"
+    ) {
+      return null;
+    }
     return payload;
   } catch {
     return null;
   }
+}
+
+async function shareLinkAllowsAccess(shareToken, documentId) {
+  const link = await prisma.documentShareLink.findUnique({
+    where: { token: shareToken },
+  });
+
+  if (!link || !link.enabled || link.documentId !== documentId) {
+    return false;
+  }
+  if (link.expiresAt && link.expiresAt < new Date()) {
+    return false;
+  }
+  return true;
 }
 
 async function userHasDocumentAccess(userId, documentId, minRole) {
@@ -92,6 +112,27 @@ const server = new Server({
 
     if (payload.documentId !== documentName) {
       throw new Error("Document mismatch");
+    }
+
+    if (payload.shareToken) {
+      if (payload.access !== "viewer") {
+        throw new Error("Share access must be read-only");
+      }
+      const shareOk = await shareLinkAllowsAccess(
+        payload.shareToken,
+        documentName,
+      );
+      if (!shareOk) {
+        throw new Error("Share link invalid or expired");
+      }
+      return {
+        user: {
+          id: payload.userId,
+          name: payload.name,
+          color: payload.color,
+        },
+        readOnly: true,
+      };
     }
 
     const minRole = payload.access === "editor" ? Role.EDITOR : Role.VIEWER;

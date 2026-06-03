@@ -145,6 +145,7 @@ PR 与 push 均会执行 `docker-verify`。依赖更新由 [Dependabot](.github/
 - ✅ Yjs 文档状态持久化到 PostgreSQL
 - ✅ 协同连接 HMAC 令牌鉴权（含角色：可编辑 / 仅查看）
 - ✅ 协作者邀请与角色管理
+- ✅ 公开只读分享链接（无需登录）
 - ✅ 环境变量校验、`/api/health`、安全响应头
 - ✅ Vitest 单元测试（`pnpm test`）
 
@@ -176,9 +177,11 @@ team-docs/
 | `COLLAB_SECRET` | 协同令牌签名密钥（Web 与 collab-server 必须一致） |
 | `NEXT_PUBLIC_COLLAB_WS_URL` | 浏览器连接的 WebSocket 地址 |
 
-## 扩展建议
+## 公开分享
 
-- 公开分享链接（无需登录的只读链接）
+文档所有者可在文档页底部 **「公开分享（只读）」** 开启链接。访客打开 `https://你的域名/share/<token>` 即可只读查看，无需注册。
+
+## 扩展建议
 - 版本历史 / 快照回滚
 - Redis 扩展 Hocuspocus 多实例
 - S3 附件与图片上传

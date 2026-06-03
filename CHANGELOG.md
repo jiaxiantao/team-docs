@@ -4,6 +4,11 @@
 
 ### Added
 
+- **公开只读分享链接**：所有者开启后生成 `/share/[token]`，访客无需登录即可查看
+- 分享管理 API、`DocumentShareLink` 数据表、文档页分享面板
+
+### Added (earlier)
+
 - 路由级 `loading.tsx` / `docs/[id]/error.tsx` / `global-error.tsx`
 - 协同令牌单元测试、编辑器断线重连与重试
 - Dependabot（npm、GitHub Actions）

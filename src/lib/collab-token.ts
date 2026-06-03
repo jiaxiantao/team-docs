@@ -17,6 +17,8 @@ export type CollabTokenPayload = {
   name: string;
   color: string;
   access: CollabAccessMode;
+  /** 通过公开分享链接访问时携带，供协同服务校验 */
+  shareToken?: string;
   exp: number;
 };
 

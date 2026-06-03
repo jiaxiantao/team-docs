@@ -17,6 +17,8 @@ function isPublicPath(pathname: string): boolean {
     return true;
   }
   if (pathname === "/api/health") return true;
+  if (pathname.startsWith("/share/")) return true;
+  if (pathname.startsWith("/api/share/")) return true;
   if (pathname.startsWith("/api/auth") || pathname === "/api/register") {
     return true;
   }

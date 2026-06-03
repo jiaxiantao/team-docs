@@ -15,13 +15,17 @@ import * as Y from "yjs";
 import { Loader2, Users, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type EditorUser = {
+  id: string;
+  name: string;
+  color: string;
+};
+
 type CollaborativeEditorProps = {
   documentId: string;
-  user: {
-    id: string;
-    name: string;
-    color: string;
-  };
+  user?: EditorUser;
+  /** 公开分享令牌；设置后从 /api/share/[token]/collab 获取协同凭证 */
+  shareToken?: string;
   readOnly?: boolean;
   className?: string;
 };
@@ -31,7 +35,7 @@ type ConnectionState = "connecting" | "syncing" | "ready" | "disconnected" | "er
 type EditorSurfaceProps = {
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
-  user: CollaborativeEditorProps["user"];
+  user: EditorUser;
   readOnly?: boolean;
   disconnected?: boolean;
   onRetry?: () => void;
@@ -261,7 +265,8 @@ function OnlineCount({ provider }: { provider: HocuspocusProvider }) {
 
 export function CollaborativeEditor({
   documentId,
-  user,
+  user: userProp,
+  shareToken,
   readOnly = false,
   className,
 }: CollaborativeEditorProps) {
@@ -271,6 +276,9 @@ export function CollaborativeEditor({
     useState<ConnectionState>("connecting");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [connectAttempt, setConnectAttempt] = useState(0);
+  const [sessionUser, setSessionUser] = useState<EditorUser | null>(
+    userProp ?? null,
+  );
 
   const ydoc = useMemo(() => {
     void documentId;
@@ -284,22 +292,32 @@ export function CollaborativeEditor({
     providerRef.current = null;
     setProvider(null);
     setSynced(false);
+    setSessionUser(userProp ?? null);
     setConnectionState("connecting");
     setErrorMessage(null);
     setConnectAttempt((n) => n + 1);
-  }, []);
+  }, [userProp]);
 
   useEffect(() => {
     let active = true;
 
     const connect = async () => {
       try {
-        const res = await fetch(`/api/collab/token?documentId=${documentId}`);
+        const tokenUrl = shareToken
+          ? `/api/share/${shareToken}/collab`
+          : `/api/collab/token?documentId=${documentId}`;
+
+        const res = await fetch(tokenUrl);
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? "无法获取协同令牌");
         }
-        const { token, wsUrl } = await res.json();
+        const data = await res.json();
+        const { token, wsUrl } = data;
+        const user: EditorUser = data.user ?? userProp;
+        if (!user) {
+          throw new Error("缺少用户信息");
+        }
         if (!active) return;
 
         const hocuspocus = new HocuspocusProvider({
@@ -333,6 +351,7 @@ export function CollaborativeEditor({
           color: user.color,
         });
 
+        setSessionUser(user);
         providerRef.current = hocuspocus;
         setProvider(hocuspocus);
       } catch (err) {
@@ -355,7 +374,7 @@ export function CollaborativeEditor({
       setProvider(null);
       setSynced(false);
     };
-  }, [documentId, ydoc, user.name, user.color, connectAttempt]);
+  }, [documentId, ydoc, userProp, shareToken, connectAttempt]);
 
   useEffect(() => {
     if (!provider) return;
@@ -403,11 +422,15 @@ export function CollaborativeEditor({
     );
   }
 
+  if (!sessionUser) {
+    return null;
+  }
+
   return (
     <EditorSurface
       ydoc={ydoc}
       provider={provider}
-      user={user}
+      user={sessionUser}
       readOnly={readOnly}
       disconnected={connectionState === "disconnected"}
       onRetry={retry}

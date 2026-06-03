@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/layout/app-header";
 import { DocumentTitle } from "@/components/document-title";
 import { DocumentCollaborators } from "@/components/document-collaborators";
+import { DocumentShareLink } from "@/components/document-share-link";
 import { CollaborativeEditor } from "@/components/editor/collaborative-editor";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Eye } from "lucide-react";
@@ -90,6 +91,8 @@ export default async function DocumentPage({ params }: PageProps) {
           user={user}
           readOnly={!canEdit}
         />
+
+        {canManage && <DocumentShareLink documentId={document.id} />}
 
         <DocumentCollaborators
           documentId={document.id}
