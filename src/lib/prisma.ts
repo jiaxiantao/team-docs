@@ -4,12 +4,31 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient() {
+  return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
 }
+
+function isPrismaClientReady(client: PrismaClient): boolean {
+  return typeof (client as PrismaClient & { documentShareLink?: unknown })
+    .documentShareLink !== "undefined";
+}
+
+function getPrismaClient(): PrismaClient {
+  const cached = globalForPrisma.prisma;
+
+  if (cached && isPrismaClientReady(cached)) {
+    return cached;
+  }
+
+  const client = createPrismaClient();
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+  }
+
+  return client;
+}
+
+export const prisma = getPrismaClient();

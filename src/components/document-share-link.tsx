@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { parseJsonResponse } from "@/lib/parse-json-response";
 import { Check, Copy, Link2, RefreshCw } from "lucide-react";
 
 type ShareInfo = {
@@ -39,13 +40,11 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
 
     fetch(`/api/documents/${documentId}/share`)
       .then(async (res) => {
+        const data = await parseJsonResponse<{ share: ShareInfo | null; error?: string }>(res);
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(
-            typeof data.error === "string" ? data.error : "加载失败",
-          );
+          throw new Error(data.error ?? "加载失败");
         }
-        return res.json() as Promise<{ share: ShareInfo | null }>;
+        return data;
       })
       .then((data) => {
         if (!cancelled) applyShare(data.share);
@@ -72,7 +71,7 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: true }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ share: ShareInfo; error?: string }>(res);
       if (!res.ok) throw new Error(data.error ?? "开启失败");
       setShare(data.share);
     } catch (err) {
@@ -89,7 +88,7 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
       const res = await fetch(`/api/documents/${documentId}/share`, {
         method: "DELETE",
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await parseJsonResponse<{ error?: string }>(res);
       if (!res.ok) throw new Error(data.error ?? "关闭失败");
       setShare((prev) => (prev ? { ...prev, enabled: false } : null));
     } catch (err) {
@@ -108,7 +107,7 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: true, regenerate: true }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ share: ShareInfo; error?: string }>(res);
       if (!res.ok) throw new Error(data.error ?? "重置失败");
       setShare(data.share);
     } catch (err) {
