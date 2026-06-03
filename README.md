@@ -120,8 +120,13 @@ docker compose up -d --build
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`)：Push/PR 时运行 Lint、Typecheck、数据库迁移、Next.js 构建、Docker 镜像构建验证。
-- **CD** (`.github/workflows/cd.yml`)：推送到 `main` 或打 `v*` 标签时，构建并推送镜像到 `ghcr.io/<owner>/<repo>/web` 与 `collab`。
+单一工作流 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)，每次 Push/PR 只触发**一次**运行：
+
+| Job | 触发条件 | 说明 |
+|-----|----------|------|
+| `quality` | Push / PR | Lint、Typecheck、迁移、Next.js 构建 |
+| `docker-verify` | Push | 本地构建 Docker 镜像做校验（不推送） |
+| `release` | Push 到 `main` 或 `v*` 标签 | 构建并推送镜像到 `ghcr.io/<owner>/<repo>/web` 与 `collab` |
 
 ## 核心功能
 
