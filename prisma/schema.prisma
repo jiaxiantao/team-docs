@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String                 @id @default(cuid())
+  email        String                 @unique
+  name         String?
+  passwordHash String?
+  image        String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  documents    Document[]
+  collaborations DocumentCollaborator[]
+}
+
+model Document {
+  id             String                 @id @default(cuid())
+  title          String                 @default("无标题文档")
+  ownerId        String
+  owner          User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  collaborators  DocumentCollaborator[]
+  state          DocumentState?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([ownerId])
+  @@index([updatedAt])
+}
+
+model DocumentCollaborator {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  role       Role     @default(EDITOR)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@index([userId])
+}
+
+model DocumentState {
+  documentId String   @id
+  state      Bytes
+  updatedAt  DateTime @updatedAt
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  OWNER
+  EDITOR
+  VIEWER
+}

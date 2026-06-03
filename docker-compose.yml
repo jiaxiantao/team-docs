@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: teamdocs
+      POSTGRES_PASSWORD: teamdocs
+      POSTGRES_DB: teamdocs
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teamdocs -d teamdocs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    environment:
+      DATABASE_URL: postgresql://teamdocs:teamdocs@postgres:5432/teamdocs?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://teamdocs:teamdocs@postgres:5432/teamdocs?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-docker-dev-auth-secret-change-in-prod}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      COLLAB_SECRET: ${COLLAB_SECRET:-docker-dev-collab-secret-change-in-prod}
+      NEXT_PUBLIC_COLLAB_WS_URL: ${NEXT_PUBLIC_COLLAB_WS_URL:-ws://localhost:1234}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      collab:
+        condition: service_started
+
+  collab:
+    build:
+      context: .
+      dockerfile: Dockerfile.collab
+    restart: unless-stopped
+    ports:
+      - "1234:1234"
+    environment:
+      DATABASE_URL: postgresql://teamdocs:teamdocs@postgres:5432/teamdocs?schema=public
+      COLLAB_SECRET: ${COLLAB_SECRET:-docker-dev-collab-secret-change-in-prod}
+      COLLAB_PORT: 1234
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:

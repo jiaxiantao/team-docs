@@ -2,9 +2,13 @@
 
 # dependencies
 /node_modules
+**/node_modules
 /.pnp
 .pnp.*
+.pnpm-store
 .yarn/*
+package-lock.json
+**/package-lock.json
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
@@ -31,7 +35,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.local
+.env.*.local
+!.env.example
 
 # vercel
 .vercel

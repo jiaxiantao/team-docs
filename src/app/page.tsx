@@ -1,65 +1,103 @@
-import Image from "next/image";
+import Link from "next/link";
+import { auth } from "@/auth";
+import { Button } from "@/components/ui/button";
+import { FileText, Users, Zap, Shield } from "lucide-react";
 
-export default function Home() {
+export default async function HomePage() {
+  const session = await auth();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex flex-1 flex-col">
+      <header className="border-b bg-card/50 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <FileText className="h-6 w-6 text-primary" />
+            Team Docs
+          </Link>
+          <nav className="flex items-center gap-3">
+            {session ? (
+              <Button asChild>
+                <Link href="/dashboard">进入工作台</Link>
+              </Button>
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/login">登录</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/register">免费注册</Link>
+                </Button>
+              </>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col">
+        <section className="mx-auto flex max-w-6xl flex-1 flex-col items-center justify-center px-6 py-24 text-center">
+          <div className="mb-4 inline-flex items-center rounded-full border bg-card px-4 py-1 text-sm text-muted-foreground">
+            Next.js · PostgreSQL · Yjs · Docker
+          </div>
+          <h1 className="flex flex-col items-center gap-2 text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            <span className="text-balance">团队协同文档</span>
+            <span className="text-primary whitespace-nowrap">
+              实时如同面对面
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+            基于 CRDT 的冲突自由合并，多人同时编辑同一文档，光标与选区实时可见。
+            支持 Docker 一键部署与 GitHub Actions CI/CD。
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+          <div className="mt-10 flex flex-wrap justify-center gap-4">
+            <Button size="lg" asChild>
+              <Link href={session ? "/dashboard" : "/register"}>
+                {session ? "我的文档" : "立即开始"}
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/docs/architecture">查看架构说明</Link>
+            </Button>
+          </div>
+        </section>
+
+        <section className="border-t bg-card/30 py-20">
+          <div className="mx-auto grid max-w-6xl gap-8 px-6 sm:grid-cols-3">
+            <Feature
+              icon={Zap}
+              title="毫秒级同步"
+              description="Hocuspocus + Yjs 提供飞书级实时协同体验"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+            <Feature
+              icon={Users}
+              title="多人光标"
+              description="协作者光标与昵称彩色展示，在线人数实时更新"
+            />
+            <Feature
+              icon={Shield}
+              title="生产就绪"
+              description="PostgreSQL 持久化、Docker Compose、CI/CD 流水线"
+            />
+          </div>
+        </section>
       </main>
+    </div>
+  );
+}
+
+function Feature({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border bg-card p-6 shadow-sm">
+      <Icon className="mb-4 h-8 w-8 text-primary" />
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }

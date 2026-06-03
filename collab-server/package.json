@@ -1,0 +1,15 @@
+{
+  "name": "collab-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-database": "^3.4.0",
+    "@hocuspocus/server": "^3.4.0",
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^17.2.3"
+  }
+}

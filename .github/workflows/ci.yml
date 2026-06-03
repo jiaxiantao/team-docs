@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  DATABASE_URL: postgresql://teamdocs:teamdocs@localhost:5432/teamdocs?schema=public
+  AUTH_SECRET: ci-test-auth-secret-min-32-chars-long
+  AUTH_URL: http://localhost:3000
+  COLLAB_SECRET: ci-test-collab-secret-shared
+  NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:1234
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: teamdocs
+          POSTGRES_PASSWORD: teamdocs
+          POSTGRES_DB: teamdocs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U teamdocs -d teamdocs"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Run database migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build Next.js
+        run: pnpm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build web image
+        run: docker build -t team-docs-web:ci .
+
+      - name: Build collab image
+        run: docker build -f Dockerfile.collab -t team-docs-collab:ci .
