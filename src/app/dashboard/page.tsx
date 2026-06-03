@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileText, LogOut, Plus, Trash2 } from "lucide-react";
+import { SignOutButton } from "@/components/sign-out-button";
+import { FileText, Plus, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 
 type DocumentItem = {
@@ -75,9 +76,7 @@ export default function DashboardPage() {
             <span className="text-sm text-muted-foreground">
               {session?.user?.name ?? session?.user?.email}
             </span>
-            <Button variant="ghost" size="icon" onClick={() => signOut()}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <SignOutButton />
           </div>
         </div>
       </header>

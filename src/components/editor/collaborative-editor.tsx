@@ -182,7 +182,10 @@ export function CollaborativeEditor({
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const ydoc = useMemo(() => new Y.Doc(), [documentId]);
+  const ydoc = useMemo(() => {
+    void documentId;
+    return new Y.Doc();
+  }, [documentId]);
 
   useEffect(() => {
     let active = true;

@@ -9,7 +9,7 @@ export default auth((req) => {
   const isPublic =
     pathname.startsWith("/api/auth") ||
     pathname === "/api/register" ||
-    pathname.startsWith("/docs") ||
+    pathname === "/docs/architecture" ||
     pathname === "/" ||
     isAuthPage;
 

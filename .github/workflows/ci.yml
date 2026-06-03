@@ -70,7 +70,13 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Build web image
-        run: docker build -f Dockerfile -t team-docs-web:ci .
+        run: |
+          docker build -f Dockerfile -t team-docs-web:ci . \
+            --build-arg AUTH_SECRET="${{ env.AUTH_SECRET }}" \
+            --build-arg DATABASE_URL="${{ env.DATABASE_URL }}" \
+            --build-arg AUTH_URL="${{ env.AUTH_URL }}" \
+            --build-arg COLLAB_SECRET="${{ env.COLLAB_SECRET }}" \
+            --build-arg NEXT_PUBLIC_COLLAB_WS_URL="${{ env.NEXT_PUBLIC_COLLAB_WS_URL }}"
 
       - name: Build collab image
         run: docker build -f Dockerfile.collab -t team-docs-collab:ci .

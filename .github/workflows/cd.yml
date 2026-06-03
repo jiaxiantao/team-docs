@@ -6,6 +6,13 @@ on:
     tags:
       - "v*"
 
+env:
+  DATABASE_URL: postgresql://teamdocs:teamdocs@postgres:5432/teamdocs?schema=public
+  AUTH_SECRET: ci-test-auth-secret-min-32-chars-long
+  AUTH_URL: http://localhost:3000
+  COLLAB_SECRET: ci-test-collab-secret-shared
+  NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:1234
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -47,6 +54,12 @@ jobs:
           tags: ghcr.io/${{ github.repository }}/web:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            AUTH_SECRET=${{ env.AUTH_SECRET }}
+            DATABASE_URL=${{ env.DATABASE_URL }}
+            AUTH_URL=${{ env.AUTH_URL }}
+            COLLAB_SECRET=${{ env.COLLAB_SECRET }}
+            NEXT_PUBLIC_COLLAB_WS_URL=${{ env.NEXT_PUBLIC_COLLAB_WS_URL }}
 
       - name: Build and push collab
         uses: docker/build-push-action@v6
