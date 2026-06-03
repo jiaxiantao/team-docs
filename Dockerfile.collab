@@ -6,7 +6,8 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY collab-server/package.json ./collab-server/
 COPY prisma ./prisma
-RUN pnpm install --frozen-lockfile && pnpm exec prisma generate
+RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm exec prisma generate
 
 COPY collab-server/index.mjs ./collab-server/
 

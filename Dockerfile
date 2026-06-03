@@ -8,12 +8,15 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY collab-server/package.json ./collab-server/
-RUN pnpm install --frozen-lockfile
+COPY prisma ./prisma
+# postinstall 会跑 prisma generate，须先有 schema；Docker 内显式生成
+RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm exec prisma generate
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/prisma ./prisma
 COPY . .
-RUN pnpm exec prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 

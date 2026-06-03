@@ -70,7 +70,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Build web image
-        run: docker build -t team-docs-web:ci .
+        run: docker build -f Dockerfile -t team-docs-web:ci .
 
       - name: Build collab image
         run: docker build -f Dockerfile.collab -t team-docs-collab:ci .

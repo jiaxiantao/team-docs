@@ -1,0 +1,13 @@
+.git
+.github
+.next
+node_modules
+collab-server/node_modules
+.env
+.env.*
+!.env.example
+*.md
+!README.md
+.DS_Store
+coverage
+*.log
