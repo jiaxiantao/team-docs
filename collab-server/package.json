@@ -9,7 +9,7 @@
   "dependencies": {
     "@hocuspocus/extension-database": "^3.4.0",
     "@hocuspocus/extension-redis": "^3.4.4",
-    "@hocuspocus/server": "^3.4.0",
+    "@hocuspocus/server": "^4.2.0",
     "@prisma/client": "^6.19.3",
     "dotenv": "^17.2.3",
     "ioredis": "^5.11.1"
