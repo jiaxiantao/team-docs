@@ -10,7 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-export function RegisterForm() {
+type RegisterFormProps = {
+  githubEnabled?: boolean;
+};
+
+export function RegisterForm({ githubEnabled = false }: RegisterFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
@@ -139,6 +143,30 @@ export function RegisterForm() {
               {loading ? "注册中…" : "注册并开始"}
             </Button>
           </form>
+
+          {githubEnabled && (
+            <>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">或</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={loading}
+                onClick={() =>
+                  void signIn("github", { callbackUrl, redirect: true })
+                }
+              >
+                使用 GitHub 注册
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

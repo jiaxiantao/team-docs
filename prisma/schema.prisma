@@ -17,6 +17,8 @@ model User {
   updatedAt    DateTime               @updatedAt
   documents    Document[]
   collaborations DocumentCollaborator[]
+  snapshots    DocumentSnapshot[]
+  uploads      DocumentAttachment[] @relation("UploadedBy")
 }
 
 model Document {
@@ -27,6 +29,8 @@ model Document {
   collaborators  DocumentCollaborator[]
   state          DocumentState?
   shareLink      DocumentShareLink?
+  snapshots      DocumentSnapshot[]
+  attachments    DocumentAttachment[]
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
 
@@ -67,8 +71,43 @@ model DocumentShareLink {
   @@index([token])
 }
 
+model DocumentSnapshot {
+  id          String         @id @default(cuid())
+  documentId  String
+  document    Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  state       Bytes
+  title       String
+  label       String?
+  source      SnapshotSource @default(AUTO)
+  createdById String?
+  createdBy   User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+
+  @@index([documentId, createdAt])
+}
+
 enum Role {
   OWNER
   EDITOR
   VIEWER
+}
+
+enum SnapshotSource {
+  AUTO
+  MANUAL
+}
+
+model DocumentAttachment {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  storageKey   String
+  filename     String
+  mimeType     String
+  size         Int
+  uploadedById String
+  uploadedBy   User     @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@index([documentId])
 }

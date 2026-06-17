@@ -9,15 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { safeCallbackUrl } from "@/lib/safe-url";
+import { oauthErrorMessage } from "@/lib/oauth-errors";
 
-export function LoginForm() {
+type LoginFormProps = {
+  githubEnabled?: boolean;
+};
+
+export function LoginForm({ githubEnabled = false }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
   const registered = searchParams.get("registered") === "1";
+  const oauthError = oauthErrorMessage(searchParams.get("error"));
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(oauthError);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -99,6 +105,30 @@ export function LoginForm() {
               {loading ? "登录中…" : "登录"}
             </Button>
           </form>
+
+          {githubEnabled && (
+            <>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">或</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={loading}
+                onClick={() =>
+                  void signIn("github", { callbackUrl, redirect: true })
+                }
+              >
+                使用 GitHub 登录
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -13,6 +13,21 @@ export function buildPublicShareUrl(token: string, origin: string): string {
   return `${origin.replace(/\/$/, "")}${buildPublicSharePath(token)}`;
 }
 
+/** 根据天数计算分享过期时间；null 表示永久有效 */
+export function computeShareExpiresAt(
+  expiresInDays: number | null,
+): Date | null {
+  if (expiresInDays === null || expiresInDays <= 0) return null;
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+  return expiresAt;
+}
+
+export function isShareExpired(expiresAt: Date | null): boolean {
+  if (!expiresAt) return false;
+  return expiresAt < new Date();
+}
+
 export async function findActiveShareByToken(token: string) {
   const link = await prisma.documentShareLink.findUnique({
     where: { token },

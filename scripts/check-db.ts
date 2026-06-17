@@ -43,6 +43,19 @@ async function main() {
     } else {
       console.log("   提示: 尚未执行迁移，请运行 pnpm run db:migrate");
     }
+
+    const { getPendingMigrationNames } = await import(
+      "../src/lib/db-migrations.js"
+    );
+    const pending = await getPendingMigrationNames();
+    if (pending.length > 0) {
+      console.error(`\n⚠️  有 ${pending.length} 条迁移未应用:`);
+      for (const name of pending) {
+        console.error(`   - ${name}`);
+      }
+      console.error("\n请运行: pnpm run db:migrate");
+      process.exit(1);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("❌ 数据库连接失败");

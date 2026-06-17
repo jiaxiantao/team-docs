@@ -16,3 +16,17 @@ export function formatRelativeTime(date: Date): string {
   if (days < 7) return `${days} 天前`;
   return date.toLocaleDateString("zh-CN");
 }
+
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+export function formatShareExpiry(expiresAt: string | Date | null): string {
+  if (!expiresAt) return "永久有效";
+  const date = expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
+  if (Number.isNaN(date.getTime())) return "永久有效";
+  if (date < new Date()) return "已过期";
+  return `${date.toLocaleDateString("zh-CN")} 到期`;
+}

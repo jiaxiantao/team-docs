@@ -24,6 +24,9 @@ package-lock.json
 # production
 /build
 
+# uploads (local storage driver)
+/uploads
+
 # misc
 .DS_Store
 *.pem

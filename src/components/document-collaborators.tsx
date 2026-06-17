@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { fetchJson } from "@/lib/fetch-json";
 import { UserPlus, X } from "lucide-react";
 
 type Collaborator = {
@@ -47,15 +48,11 @@ export function DocumentCollaborators({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/documents/${documentId}/collaborators`, {
+      await fetchJson(`/api/documents/${documentId}/collaborators`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), role }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error ?? "邀请失败");
-      }
       setEmail("");
       router.refresh();
     } catch (err) {
@@ -68,31 +65,29 @@ export function DocumentCollaborators({
   async function removeCollaborator(userId: string) {
     if (!confirm("确定移除该协作者？")) return;
     setError(null);
-    const res = await fetch(
-      `/api/documents/${documentId}/collaborators?userId=${userId}`,
-      { method: "DELETE" },
-    );
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error ?? "移除失败");
-      return;
+    try {
+      await fetchJson(
+        `/api/documents/${documentId}/collaborators?userId=${userId}`,
+        { method: "DELETE" },
+      );
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "移除失败");
     }
-    router.refresh();
   }
 
   async function changeRole(userId: string, newRole: "EDITOR" | "VIEWER") {
     setError(null);
-    const res = await fetch(`/api/documents/${documentId}/collaborators`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, role: newRole }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error ?? "更新失败");
-      return;
+    try {
+      await fetchJson(`/api/documents/${documentId}/collaborators`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: newRole }),
+      });
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "更新失败");
     }
-    router.refresh();
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { fetchJson } from "@/lib/fetch-json";
 import { cn } from "@/lib/utils";
 
 type DocumentTitleProps = {
@@ -27,15 +28,11 @@ export function DocumentTitle({
       setSaving(true);
       setError(null);
       try {
-        const res = await fetch(`/api/documents/${documentId}`, {
+        await fetchJson(`/api/documents/${documentId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: trimmed }),
         });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? "保存失败");
-        }
         setTitle(trimmed);
       } catch (err) {
         setError(err instanceof Error ? err.message : "保存失败");

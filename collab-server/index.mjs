@@ -1,13 +1,18 @@
 import { Server } from "@hocuspocus/server";
 import { Database } from "@hocuspocus/extension-database";
+import { Redis } from "@hocuspocus/extension-redis";
 import { createHmac, timingSafeEqual } from "crypto";
+import { hostname } from "os";
 import { PrismaClient, Role } from "@prisma/client";
+import RedisClient from "ioredis";
 import "dotenv/config";
 
 const prisma = new PrismaClient();
 const port = Number(process.env.COLLAB_PORT ?? 1234);
 const secret = process.env.COLLAB_SECRET;
 const MAX_STATE_BYTES = 5 * 1024 * 1024;
+const AUTO_SNAPSHOT_INTERVAL_MS = 30 * 60 * 1000;
+const MAX_SNAPSHOTS = 20;
 
 const ROLE_RANK = {
   VIEWER: 1,
@@ -84,7 +89,115 @@ async function userHasDocumentAccess(userId, documentId, minRole) {
   return ROLE_RANK[collab.role] >= ROLE_RANK[minRole];
 }
 
+async function pruneSnapshots(documentId) {
+  const count = await prisma.documentSnapshot.count({
+    where: { documentId },
+  });
+  if (count <= MAX_SNAPSHOTS) return;
+
+  const excess = count - MAX_SNAPSHOTS;
+  const oldest = await prisma.documentSnapshot.findMany({
+    where: { documentId },
+    orderBy: { createdAt: "asc" },
+    take: excess,
+    select: { id: true },
+  });
+
+  await prisma.documentSnapshot.deleteMany({
+    where: { id: { in: oldest.map((row) => row.id) } },
+  });
+}
+
+async function maybeCreateAutoSnapshot(documentId, state) {
+  const last = await prisma.documentSnapshot.findFirst({
+    where: { documentId, source: "AUTO" },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+
+  if (
+    last &&
+    Date.now() - last.createdAt.getTime() < AUTO_SNAPSHOT_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  const doc = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: { title: true },
+  });
+  if (!doc) return;
+
+  await prisma.documentSnapshot.create({
+    data: {
+      documentId,
+      state: Buffer.from(state),
+      title: doc.title,
+      label: "自动快照",
+      source: "AUTO",
+    },
+  });
+
+  await pruneSnapshots(documentId);
+}
+
+const databaseExtension = new Database({
+  fetch: async ({ documentName }) => {
+    const row = await prisma.documentState.findUnique({
+      where: { documentId: documentName },
+    });
+    if (!row?.state) return null;
+    return new Uint8Array(row.state);
+  },
+  store: async ({ documentName, state }) => {
+    if (state.byteLength > MAX_STATE_BYTES) {
+      console.warn(
+        `[collab] Document ${documentName} state exceeds ${MAX_STATE_BYTES} bytes, skipping persist`,
+      );
+      return;
+    }
+
+    await prisma.documentState.upsert({
+      where: { documentId: documentName },
+      create: {
+        documentId: documentName,
+        state: Buffer.from(state),
+      },
+      update: {
+        state: Buffer.from(state),
+        updatedAt: new Date(),
+      },
+    });
+
+    await prisma.document
+      .update({
+        where: { id: documentName },
+        data: { updatedAt: new Date() },
+      })
+      .catch(() => {
+        /* document may have been deleted */
+      });
+
+    await maybeCreateAutoSnapshot(documentName, state).catch((err) => {
+      console.warn(`[collab] Auto snapshot failed for ${documentName}:`, err);
+    });
+  },
+});
+
+const extensions = [databaseExtension];
+const redisUrl = process.env.REDIS_URL;
+
+if (redisUrl) {
+  extensions.unshift(
+    new Redis({
+      redis: new RedisClient(redisUrl),
+    }),
+  );
+  console.log("[collab] Redis extension enabled");
+}
+
 const server = new Server({
+  name: process.env.COLLAB_SERVER_NAME ?? `collab-${hostname()}`,
   port,
   debounce: 800,
   maxDebounce: 3000,
@@ -155,48 +268,23 @@ const server = new Server({
     };
   },
 
-  extensions: [
-    new Database({
-      fetch: async ({ documentName }) => {
-        const row = await prisma.documentState.findUnique({
-          where: { documentId: documentName },
-        });
-        if (!row?.state) return null;
-        return new Uint8Array(row.state);
-      },
-      store: async ({ documentName, state }) => {
-        if (state.byteLength > MAX_STATE_BYTES) {
-          console.warn(
-            `[collab] Document ${documentName} state exceeds ${MAX_STATE_BYTES} bytes, skipping persist`,
-          );
-          return;
-        }
-
-        await prisma.documentState.upsert({
-          where: { documentId: documentName },
-          create: {
-            documentId: documentName,
-            state: Buffer.from(state),
-          },
-          update: {
-            state: Buffer.from(state),
-            updatedAt: new Date(),
-          },
-        });
-
-        await prisma.document.update({
-          where: { id: documentName },
-          data: { updatedAt: new Date() },
-        }).catch(() => {
-          /* document may have been deleted */
-        });
-      },
-    }),
-  ],
+  extensions,
 });
 
-server.listen();
-console.log(`Hocuspocus collab server listening on :${port}`);
+server.listen().then(() => {
+  console.log(`Hocuspocus collab server listening on :${port}`);
+}).catch((err) => {
+  if (err?.code === "EADDRINUSE") {
+    console.error(
+      `[collab] 端口 ${port} 已被占用（通常是上次 dev 未退出）。` +
+        `\n  释放端口：lsof -i :${port} -t | xargs kill` +
+        `\n  或修改 .env 中的 COLLAB_PORT`,
+    );
+  } else {
+    console.error("[collab] 启动失败:", err);
+  }
+  process.exit(1);
+});
 
 process.on("SIGTERM", async () => {
   await server.destroy();

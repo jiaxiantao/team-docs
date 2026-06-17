@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import {
+  listDocumentsForUser,
+  serializeDocumentListItem,
+} from "@/lib/documents";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -8,27 +12,11 @@ export async function GET() {
     return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 
-  const userId = session.user.id;
+  const documents = await listDocumentsForUser(session.user.id);
 
-  const documents = await prisma.document.findMany({
-    where: {
-      OR: [
-        { ownerId: userId },
-        { collaborators: { some: { userId } } },
-      ],
-    },
-    orderBy: { updatedAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      updatedAt: true,
-      createdAt: true,
-      ownerId: true,
-      owner: { select: { name: true, email: true } },
-    },
+  return NextResponse.json({
+    documents: documents.map(serializeDocumentListItem),
   });
-
-  return NextResponse.json({ documents });
 }
 
 export async function POST(request: Request) {

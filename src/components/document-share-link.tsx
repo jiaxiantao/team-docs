@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { parseJsonResponse } from "@/lib/parse-json-response";
+import { fetchJson } from "@/lib/fetch-json";
+import { formatShareExpiry } from "@/lib/utils";
 import { Check, Copy, Link2, RefreshCw } from "lucide-react";
 
 type ShareInfo = {
@@ -14,12 +15,37 @@ type ShareInfo = {
   createdAt: string;
 };
 
+type ExpiryOption = "never" | "7" | "30" | "90";
+
+const EXPIRY_OPTIONS: { value: ExpiryOption; label: string }[] = [
+  { value: "never", label: "永久有效" },
+  { value: "7", label: "7 天" },
+  { value: "30", label: "30 天" },
+  { value: "90", label: "90 天" },
+];
+
+function expiryOptionFromShare(share: ShareInfo | null): ExpiryOption {
+  if (!share?.expiresAt) return "never";
+  const days = Math.ceil(
+    (new Date(share.expiresAt).getTime() - Date.now()) / 86_400_000,
+  );
+  if (days <= 7) return "7";
+  if (days <= 30) return "30";
+  return "90";
+}
+
+function expiresInDaysFromOption(option: ExpiryOption): number | null {
+  if (option === "never") return null;
+  return Number(option);
+}
+
 type DocumentShareLinkProps = {
   documentId: string;
 };
 
 export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
   const [share, setShare] = useState<ShareInfo | null>(null);
+  const [expiryOption, setExpiryOption] = useState<ExpiryOption>("never");
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +53,7 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
 
   const applyShare = useCallback((data: ShareInfo | null) => {
     setShare(data);
+    setExpiryOption(expiryOptionFromShare(data));
     setLoading(false);
   }, []);
 
@@ -38,14 +65,7 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`/api/documents/${documentId}/share`)
-      .then(async (res) => {
-        const data = await parseJsonResponse<{ share: ShareInfo | null; error?: string }>(res);
-        if (!res.ok) {
-          throw new Error(data.error ?? "加载失败");
-        }
-        return data;
-      })
+    fetchJson<{ share: ShareInfo | null }>(`/api/documents/${documentId}/share`)
       .then((data) => {
         if (!cancelled) applyShare(data.share);
       })
@@ -66,13 +86,17 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
     setActing(true);
     setError(null);
     try {
-      const res = await fetch(`/api/documents/${documentId}/share`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: true }),
-      });
-      const data = await parseJsonResponse<{ share: ShareInfo; error?: string }>(res);
-      if (!res.ok) throw new Error(data.error ?? "开启失败");
+      const data = await fetchJson<{ share: ShareInfo }>(
+        `/api/documents/${documentId}/share`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            enabled: true,
+            expiresInDays: expiresInDaysFromOption(expiryOption),
+          }),
+        },
+      );
       setShare(data.share);
     } catch (err) {
       setError(err instanceof Error ? err.message : "开启失败");
@@ -85,11 +109,9 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
     setActing(true);
     setError(null);
     try {
-      const res = await fetch(`/api/documents/${documentId}/share`, {
+      await fetchJson(`/api/documents/${documentId}/share`, {
         method: "DELETE",
       });
-      const data = await parseJsonResponse<{ error?: string }>(res);
-      if (!res.ok) throw new Error(data.error ?? "关闭失败");
       setShare((prev) => (prev ? { ...prev, enabled: false } : null));
     } catch (err) {
       setError(err instanceof Error ? err.message : "关闭失败");
@@ -102,16 +124,46 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
     setActing(true);
     setError(null);
     try {
-      const res = await fetch(`/api/documents/${documentId}/share`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: true, regenerate: true }),
-      });
-      const data = await parseJsonResponse<{ share: ShareInfo; error?: string }>(res);
-      if (!res.ok) throw new Error(data.error ?? "重置失败");
+      const data = await fetchJson<{ share: ShareInfo }>(
+        `/api/documents/${documentId}/share`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            enabled: true,
+            regenerate: true,
+            expiresInDays: expiresInDaysFromOption(expiryOption),
+          }),
+        },
+      );
       setShare(data.share);
     } catch (err) {
       setError(err instanceof Error ? err.message : "重置失败");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function updateExpiry(option: ExpiryOption) {
+    setExpiryOption(option);
+    if (!share?.enabled) return;
+
+    setActing(true);
+    setError(null);
+    try {
+      const data = await fetchJson<{ share: ShareInfo }>(
+        `/api/documents/${documentId}/share`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            expiresInDays: expiresInDaysFromOption(option),
+          }),
+        },
+      );
+      setShare(data.share);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "更新有效期失败");
     } finally {
       setActing(false);
     }
@@ -144,9 +196,26 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
         {loading ? (
           <div className="h-10 animate-pulse rounded-lg bg-muted/50" />
         ) : !share || !share.enabled ? (
-          <Button type="button" onClick={enableShare} disabled={acting}>
-            {acting ? "开启中…" : "开启公开分享"}
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-muted-foreground">链接有效期</span>
+              <select
+                value={expiryOption}
+                onChange={(e) => setExpiryOption(e.target.value as ExpiryOption)}
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+                disabled={acting}
+              >
+                {EXPIRY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="button" onClick={enableShare} disabled={acting}>
+              {acting ? "开启中…" : "开启公开分享"}
+            </Button>
+          </div>
         ) : (
           <div className="space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -180,6 +249,30 @@ export function DocumentShareLink({ documentId }: DocumentShareLinkProps) {
                 </Button>
               </div>
             </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">有效期</span>
+                <select
+                  value={expiryOption}
+                  onChange={(e) =>
+                    void updateExpiry(e.target.value as ExpiryOption)
+                  }
+                  className="h-8 rounded-md border bg-background px-2 text-sm"
+                  disabled={acting}
+                >
+                  {EXPIRY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="text-xs text-muted-foreground">
+                {formatShareExpiry(share.expiresAt)}
+              </span>
+            </div>
+
             <Button
               type="button"
               variant="ghost"

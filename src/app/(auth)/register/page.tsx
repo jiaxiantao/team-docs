@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { isGitHubAuthEnabled } from "@/lib/github-auth";
 import { RegisterForm } from "./register-form";
 
 function RegisterFallback() {
@@ -10,9 +11,11 @@ function RegisterFallback() {
 }
 
 export default function RegisterPage() {
+  const githubEnabled = isGitHubAuthEnabled();
+
   return (
     <Suspense fallback={<RegisterFallback />}>
-      <RegisterForm />
+      <RegisterForm githubEnabled={githubEnabled} />
     </Suspense>
   );
 }

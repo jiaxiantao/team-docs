@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { deleteDocumentAttachments } from "@/lib/attachment-cleanup";
 import { canAccessDocument } from "@/lib/document-access";
 import { prisma } from "@/lib/prisma";
 
@@ -91,6 +92,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "仅所有者可删除" }, { status: 403 });
   }
 
+  await deleteDocumentAttachments(id);
   await prisma.document.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

@@ -1,18 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCaret from "@tiptap/extension-collaboration-caret";
-import Placeholder from "@tiptap/extension-placeholder";
-import Underline from "@tiptap/extension-underline";
-import Link from "@tiptap/extension-link";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { Loader2, Users, WifiOff } from "lucide-react";
+import { COLLAB_TOKEN_REFRESH_MS } from "@/lib/collab-token";
+import { createEditorExtensions } from "@/components/editor/editor-extensions";
+import { EditorToolbar } from "@/components/editor/editor-toolbar";
+import {
+  isImageFile,
+  uploadDocumentFile,
+} from "@/components/editor/upload-document-file";
+import { fetchJson } from "@/lib/fetch-json";
 import { cn } from "@/lib/utils";
 
 type EditorUser = {
@@ -24,7 +31,6 @@ type EditorUser = {
 type CollaborativeEditorProps = {
   documentId: string;
   user?: EditorUser;
-  /** 公开分享令牌；设置后从 /api/share/[token]/collab 获取协同凭证 */
   shareToken?: string;
   readOnly?: boolean;
   className?: string;
@@ -33,6 +39,7 @@ type CollaborativeEditorProps = {
 type ConnectionState = "connecting" | "syncing" | "ready" | "disconnected" | "error";
 
 type EditorSurfaceProps = {
+  documentId: string;
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
   user: EditorUser;
@@ -42,8 +49,8 @@ type EditorSurfaceProps = {
   className?: string;
 };
 
-/** 仅在协同文档已从服务端同步后再挂载 Tiptap，避免刷新后加载到空文档 */
 function EditorSurface({
+  documentId,
   ydoc,
   provider,
   user,
@@ -52,34 +59,16 @@ function EditorSurface({
   onRetry,
   className,
 }: EditorSurfaceProps) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [showLinkInput, setShowLinkInput] = useState(false);
+
   const editor = useEditor(
     {
       immediatelyRender: false,
       editable: !readOnly,
-      extensions: [
-        StarterKit.configure({
-          undoRedo: false,
-          link: false,
-          underline: false,
-        }),
-        Underline,
-        Link.configure({ openOnClick: false }),
-        Placeholder.configure({
-          placeholder: readOnly
-            ? "只读模式"
-            : "开始输入，邀请同事一起协作…",
-        }),
-        Collaboration.configure({
-          document: ydoc,
-        }),
-        CollaborationCaret.configure({
-          provider,
-          user: {
-            name: user.name,
-            color: user.color,
-          },
-        }),
-      ],
+      extensions: createEditorExtensions({ ydoc, provider, user, readOnly }),
       editorProps: {
         attributes: {
           class:
@@ -89,9 +78,6 @@ function EditorSurface({
     },
     [ydoc, provider, user.name, user.color, readOnly],
   );
-
-  const [linkUrl, setLinkUrl] = useState("");
-  const [showLinkInput, setShowLinkInput] = useState(false);
 
   const applyLink = useCallback(() => {
     if (!editor) return;
@@ -111,6 +97,73 @@ function EditorSurface({
     setLinkUrl(previous ?? "");
     setShowLinkInput(true);
   }, [editor]);
+
+  const insertUploadedFile = useCallback(
+    async (file: File) => {
+      if (!editor) return;
+      setUploading(true);
+      setUploadError(null);
+      try {
+        const uploaded = await uploadDocumentFile(documentId, file);
+        if (isImageFile(uploaded.mimeType)) {
+          editor
+            .chain()
+            .focus()
+            .setImage({ src: uploaded.url, alt: uploaded.filename })
+            .run();
+        } else {
+          editor
+            .chain()
+            .focus()
+            .setFileAttachment({
+              href: uploaded.url,
+              filename: uploaded.filename,
+              size: uploaded.size,
+              mimeType: uploaded.mimeType,
+            })
+            .run();
+        }
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "文件上传失败");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [documentId, editor],
+  );
+
+  useEffect(() => {
+    if (!editor || readOnly) return;
+
+    const handlePaste = (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.kind !== "file") continue;
+        const file = item.getAsFile();
+        if (!file) continue;
+        event.preventDefault();
+        void insertUploadedFile(file);
+        return;
+      }
+    };
+
+    const handleDrop = (event: DragEvent) => {
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      event.preventDefault();
+      void insertUploadedFile(file);
+    };
+
+    const dom = editor.view.dom;
+    dom.addEventListener("paste", handlePaste);
+    dom.addEventListener("drop", handleDrop);
+    return () => {
+      dom.removeEventListener("paste", handlePaste);
+      dom.removeEventListener("drop", handleDrop);
+    };
+  }, [editor, readOnly, insertUploadedFile]);
 
   if (!editor) {
     return (
@@ -141,106 +194,37 @@ function EditorSurface({
       )}
 
       <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
-          {!readOnly && (
-            <div className="flex flex-wrap items-center gap-1">
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleBold().run()}
-                active={editor.isActive("bold")}
-                ariaLabel="加粗"
-                label="B"
-                className="font-bold"
-              />
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-                active={editor.isActive("italic")}
-                ariaLabel="斜体"
-                label="I"
-                className="italic"
-              />
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-                active={editor.isActive("underline")}
-                ariaLabel="下划线"
-                label="U"
-                className="underline"
-              />
-              <span className="mx-2 h-6 w-px bg-border" />
-              <ToolbarButton
-                onClick={() =>
-                  editor.chain().focus().toggleHeading({ level: 1 }).run()
-                }
-                active={editor.isActive("heading", { level: 1 })}
-                ariaLabel="一级标题"
-                label="H1"
-              />
-              <ToolbarButton
-                onClick={() =>
-                  editor.chain().focus().toggleHeading({ level: 2 }).run()
-                }
-                active={editor.isActive("heading", { level: 2 })}
-                ariaLabel="二级标题"
-                label="H2"
-              />
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleBulletList().run()}
-                active={editor.isActive("bulletList")}
-                ariaLabel="无序列表"
-                label="• 列表"
-              />
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                active={editor.isActive("orderedList")}
-                ariaLabel="有序列表"
-                label="1. 列表"
-              />
-              <ToolbarButton
-                onClick={openLinkInput}
-                ariaLabel="插入链接"
-                label="链接"
-              />
-            </div>
-          )}
-
-          <div
-            className={cn(
-              "flex items-center gap-2 text-sm text-muted-foreground",
-              readOnly && "ml-auto",
-            )}
-          >
-            <Users className="h-4 w-4" />
-            <OnlineCount provider={provider} />
-            <span
-              className={cn(
-                "inline-flex h-2 w-2 rounded-full",
-                disconnected ? "bg-amber-500" : "bg-emerald-500",
-              )}
-            />
-          </div>
-        </div>
-
-        {showLinkInput && !readOnly && (
-          <div className="flex flex-wrap items-center gap-2 border-t px-4 py-2">
-            <Input
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="h-8 max-w-xs flex-1 text-sm"
-              onKeyDown={(e) => e.key === "Enter" && applyLink()}
-            />
-            <Button type="button" size="sm" variant="secondary" onClick={applyLink}>
-              应用
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowLinkInput(false)}
-            >
-              取消
-            </Button>
-          </div>
+        {!readOnly && (
+          <EditorToolbar
+            editor={editor}
+            uploading={uploading}
+            uploadError={uploadError}
+            showLinkInput={showLinkInput}
+            linkUrl={linkUrl}
+            onLinkUrlChange={setLinkUrl}
+            onOpenLinkInput={openLinkInput}
+            onApplyLink={applyLink}
+            onCloseLinkInput={() => setShowLinkInput(false)}
+            onInsertImage={insertUploadedFile}
+            onInsertAttachment={insertUploadedFile}
+          />
         )}
+
+        <div
+          className={cn(
+            "flex items-center justify-end gap-2 border-t px-4 py-2 text-sm text-muted-foreground",
+            readOnly && "border-t-0",
+          )}
+        >
+          <Users className="h-4 w-4" />
+          <OnlineCount provider={provider} />
+          <span
+            className={cn(
+              "inline-flex h-2 w-2 rounded-full",
+              disconnected ? "bg-amber-500" : "bg-emerald-500",
+            )}
+          />
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card p-6 shadow-sm">
@@ -286,6 +270,7 @@ export function CollaborativeEditor({
   }, [documentId]);
 
   const providerRef = useRef<HocuspocusProvider | null>(null);
+  const tokenUrlRef = useRef<string>("");
 
   const retry = useCallback(() => {
     providerRef.current?.destroy();
@@ -306,18 +291,16 @@ export function CollaborativeEditor({
         const tokenUrl = shareToken
           ? `/api/share/${shareToken}/collab`
           : `/api/collab/token?documentId=${documentId}`;
+        tokenUrlRef.current = tokenUrl;
 
-        const res = await fetch(tokenUrl);
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? "无法获取协同令牌");
-        }
-        const data = await res.json();
+        const data = await fetchJson<{
+          token: string;
+          wsUrl: string;
+          user?: EditorUser;
+        }>(tokenUrl);
         const { token, wsUrl } = data;
-        const user: EditorUser = data.user ?? userProp;
-        if (!user) {
-          throw new Error("缺少用户信息");
-        }
+        const user = data.user ?? userProp;
+        if (!user) throw new Error("缺少用户信息");
         if (!active) return;
 
         const hocuspocus = new HocuspocusProvider({
@@ -378,14 +361,28 @@ export function CollaborativeEditor({
 
   useEffect(() => {
     if (!provider) return;
-
-    const flushOnLeave = () => {
-      provider.disconnect();
-    };
-
+    const flushOnLeave = () => provider.disconnect();
     window.addEventListener("beforeunload", flushOnLeave);
     return () => window.removeEventListener("beforeunload", flushOnLeave);
   }, [provider]);
+
+  useEffect(() => {
+    if (!provider || connectionState !== "ready") return;
+
+    const refreshToken = async () => {
+      try {
+        const data = await fetchJson<{ token: string }>(tokenUrlRef.current);
+        const current = providerRef.current;
+        if (!current || !data.token) return;
+        current.configuration.token = data.token;
+      } catch {
+        /* 静默失败 */
+      }
+    };
+
+    const timer = setInterval(refreshToken, COLLAB_TOKEN_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [provider, connectionState]);
 
   if (connectionState === "error") {
     return (
@@ -394,11 +391,7 @@ export function CollaborativeEditor({
         <p className="mt-2 text-sm text-muted-foreground">
           请确认已运行{" "}
           <code className="rounded bg-muted px-1.5 py-0.5">pnpm dev</code>{" "}
-          （包含 collab-server），且{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5">
-            NEXT_PUBLIC_COLLAB_WS_URL
-          </code>{" "}
-          指向 ws://localhost:1234
+          （包含 collab-server）
         </p>
         <Button type="button" className="mt-6" variant="secondary" onClick={retry}>
           重试连接
@@ -410,24 +403,21 @@ export function CollaborativeEditor({
   if (!provider || !synced) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>
-            {connectionState === "connecting"
-              ? "正在连接协同服务…"
-              : "正在加载文档内容…"}
-          </span>
-        </div>
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span>
+          {connectionState === "connecting"
+            ? "正在连接协同服务…"
+            : "正在加载文档内容…"}
+        </span>
       </div>
     );
   }
 
-  if (!sessionUser) {
-    return null;
-  }
+  if (!sessionUser) return null;
 
   return (
     <EditorSurface
+      documentId={documentId}
       ydoc={ydoc}
       provider={provider}
       user={sessionUser}
@@ -436,35 +426,5 @@ export function CollaborativeEditor({
       onRetry={retry}
       className={className}
     />
-  );
-}
-
-function ToolbarButton({
-  onClick,
-  active,
-  label,
-  ariaLabel,
-  className,
-}: {
-  onClick: () => void;
-  active?: boolean;
-  label: string;
-  ariaLabel: string;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      aria-pressed={active}
-      className={cn(
-        "rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent",
-        active && "bg-accent text-accent-foreground",
-        className,
-      )}
-    >
-      {label}
-    </button>
   );
 }

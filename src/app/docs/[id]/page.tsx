@@ -9,9 +9,12 @@ import {
 } from "@/lib/document-access";
 import { prisma } from "@/lib/prisma";
 import { AppHeader } from "@/components/layout/app-header";
+import { DocumentExportMenu } from "@/components/document-export-menu";
 import { DocumentTitle } from "@/components/document-title";
+import { DocumentAttachments } from "@/components/document-attachments";
 import { DocumentCollaborators } from "@/components/document-collaborators";
 import { DocumentShareLink } from "@/components/document-share-link";
+import { DocumentVersionHistory } from "@/components/document-version-history";
 import { CollaborativeEditor } from "@/components/editor/collaborative-editor";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Eye } from "lucide-react";
@@ -73,6 +76,7 @@ export default async function DocumentPage({ params }: PageProps) {
             className="min-w-0 flex-1"
           />
         </div>
+        <DocumentExportMenu documentId={document.id} />
       </AppHeader>
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
@@ -93,6 +97,10 @@ export default async function DocumentPage({ params }: PageProps) {
         />
 
         {canManage && <DocumentShareLink documentId={document.id} />}
+
+        <DocumentVersionHistory documentId={document.id} canEdit={canEdit} />
+
+        <DocumentAttachments documentId={document.id} canEdit={canEdit} />
 
         <DocumentCollaborators
           documentId={document.id}

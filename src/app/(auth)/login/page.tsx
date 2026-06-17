@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { isGitHubAuthEnabled } from "@/lib/github-auth";
 import { LoginForm } from "./login-form";
 
 function LoginFallback() {
@@ -10,9 +11,11 @@ function LoginFallback() {
 }
 
 export default function LoginPage() {
+  const githubEnabled = isGitHubAuthEnabled();
+
   return (
     <Suspense fallback={<LoginFallback />}>
-      <LoginForm />
+      <LoginForm githubEnabled={githubEnabled} />
     </Suspense>
   );
 }
