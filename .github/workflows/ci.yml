@@ -112,7 +112,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -128,7 +128,7 @@ jobs:
             NEXT_PUBLIC_COLLAB_WS_URL=${{ env.NEXT_PUBLIC_COLLAB_WS_URL }}
 
       - name: Build and push collab
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.collab
